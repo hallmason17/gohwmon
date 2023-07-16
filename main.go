@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -22,7 +21,6 @@ var (
 
 func main() {
 	if err := ui.Init(); err != nil {
-		log.Fatalf("failed to init termui: %v", err)
 	}
 	defer ui.Close()
 	rate := 0.5
@@ -59,15 +57,19 @@ func update(updateInterval time.Duration) {
 	fmt.Print("\033[H\033[2J")
 	fmt.Println("Memory:")
 	fmt.Printf(
-		"Total: %.2fGB, Free: %.2vGB, Used: %.2fGB UsedPercent:%.2f%%\n",
-		float64(memory.Total)/float64(BYTES_IN_GB),
-		float64(memory.Free)/float64(BYTES_IN_GB),
+		"Used: %.2fGB\nFree: %.2vGB\nTotal: %.2fGB\nUsedPercent:%.2f%%\n",
 		float64(memory.Total)/float64(BYTES_IN_GB)*(memory.UsedPercent/100),
+		float64(memory.Free)/float64(BYTES_IN_GB),
+		float64(memory.Total)/float64(BYTES_IN_GB),
 		memory.UsedPercent,
 	)
 	fmt.Println("CPU:")
 	for i := 0; i < len(cpuPcnt); i++ {
-		fmt.Printf("core%v %3.0f%%\n", i, cpuPcnt[i])
+		if i < 10 {
+			fmt.Printf("C0%v %3.0f%%\n", i, cpuPcnt[i])
+		} else {
+			fmt.Printf("C%v %3.0f%%\n", i, cpuPcnt[i])
+		}
 	}
 
 	cycle_count, err := os.ReadFile("/sys/class/power_supply/BAT0/cycle_count")
@@ -81,19 +83,10 @@ func update(updateInterval time.Duration) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	if string(charging) != "Discharging\n" {
-		fmt.Println("Battery is not discharging, cannot measure power consumption.")
-		return
-	}
 	energy_now, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_now")
 	if err != nil {
 		fmt.Println(err)
 	}
-	power_now, err := os.ReadFile("/sys/class/power_supply/BAT0/power_now")
-	if err != nil {
-		fmt.Println(err)
-	}
-	capacity, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_full")
 	energy_now1 := string(energy_now)
 	energy_now1 = energy_now1[:len(energy_now1)-2]
 	energy, err := strconv.Atoi(string(energy_now1))
@@ -101,24 +94,57 @@ func update(updateInterval time.Duration) {
 		fmt.Println(err)
 	}
 
-	power_now1 := string(power_now)
-	power_now1 = power_now1[:len(power_now1)-2]
-	power, err := strconv.Atoi(string(power_now1))
-	if err != nil {
-		fmt.Println(err)
-	}
+	capacity, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_full")
 	capacity1 := string(capacity)
 	capacity1 = capacity1[:len(capacity1)-2]
 	capacity2, err := strconv.Atoi(string(capacity1))
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	bat_time_left := float64(energy) / float64(power) * 3600
+	energy_full, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_full_design")
+	if err != nil {
+		fmt.Println(err)
+	}
+	energy_full1 := string(energy_full)
+	energy_full1 = energy_full1[:len(energy_full1)-2]
+	max_energy, err := strconv.Atoi(energy_full1)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	fmt.Printf("Battery Level: %.2f%%\n", float64(energy)/float64(capacity2)*100)
-	fmt.Printf("Battery Time Left: %.2f hours\n", bat_time_left/60/60)
-	fmt.Printf("Current power consumption: %3.2fW", float64(power)/100000)
+
+	if string(charging) != "Not charging\n" {
+		power_now, err := os.ReadFile("/sys/class/power_supply/BAT0/power_now")
+		if err != nil {
+			fmt.Println(err)
+		}
+		power_now1 := string(power_now)
+		power_now1 = power_now1[:len(power_now1)-2]
+		power, err := strconv.Atoi(string(power_now1))
+		if err != nil {
+			fmt.Println(err)
+		}
+		if string(charging) == "Charging\n" {
+			fmt.Printf(
+				"Time until charged: %d:%d\n",
+				int32((float64(max_energy)-float64(energy))/float64(power)),
+				int32((float64(max_energy)-float64(energy))/float64(power)*60)%60,
+			)
+		}
+		if string(charging) == "Discharging\n" {
+			bat_time_left := float64(energy) / float64(power) * 3600
+
+			fmt.Printf(
+				"Battery Time Left: %d:%d\n",
+				int32(bat_time_left/60/60),
+				int32(bat_time_left/60)%60,
+			)
+			fmt.Printf("Current power consumption: %3.2fW", float64(power)/100000)
+		}
+	} else if string(charging) == "Not charging\n" {
+		fmt.Println("Not Charging")
+	}
 }
 
 func SetupGrid(data []float64) {
