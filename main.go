@@ -126,20 +126,43 @@ func update(updateInterval time.Duration) {
 			fmt.Println(err)
 		}
 		if string(charging) == "Charging\n" {
-			fmt.Printf(
-				"Time until charged: %d:%d\n",
-				int32((float64(max_energy)-float64(energy))/float64(power)),
-				int32((float64(max_energy)-float64(energy))/float64(power)*60)%60,
-			)
+			minutesLeft := int32((float64(max_energy)-float64(energy))/float64(power)*60) % 60
+			if minutesLeft < 10 {
+				strMinutesLeft := fmt.Sprint(minutesLeft)
+				strMinutesLeft = "0" + strMinutesLeft
+				fmt.Printf(
+					"Time until charged: %d:%s\n",
+					int32((float64(max_energy)-float64(energy))/float64(power)),
+					strMinutesLeft,
+				)
+			} else if minutesLeft >= 10 {
+				fmt.Printf(
+					"Time until charged: %d:%d\n",
+					int32((float64(max_energy)-float64(energy))/float64(power)),
+					int32((float64(max_energy)-float64(energy))/float64(power)*60)%60,
+				)
+			}
 		}
 		if string(charging) == "Discharging\n" {
 			bat_time_left := float64(energy) / float64(power) * 3600
 
-			fmt.Printf(
-				"Battery Time Left: %d:%d\n",
-				int32(bat_time_left/60/60),
-				int32(bat_time_left/60)%60,
-			)
+			if int32(bat_time_left/60)%60 < 10 {
+				intMinutesLeft := int32(bat_time_left/60) % 60
+				minutesLeft := "0" + fmt.Sprint(intMinutesLeft)
+				fmt.Println(minutesLeft)
+				fmt.Printf(
+					"Battery Time Left: %d:%s\n",
+					int32(bat_time_left/60/60),
+					minutesLeft,
+				)
+			} else if int32(bat_time_left/60)%60 >= 10 {
+				fmt.Printf(
+					"Battery Time Left: %d:%d\n",
+					int32(bat_time_left/60/60),
+					int32(bat_time_left/60)%60,
+				)
+			}
+
 			fmt.Printf("Current power consumption: %3.2fW", float64(power)/100000)
 		}
 	} else if string(charging) == "Not charging\n" {
