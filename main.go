@@ -149,7 +149,6 @@ func update(updateInterval time.Duration) {
 			if int32(bat_time_left/60)%60 < 10 {
 				intMinutesLeft := int32(bat_time_left/60) % 60
 				minutesLeft := "0" + fmt.Sprint(intMinutesLeft)
-				fmt.Println(minutesLeft)
 				fmt.Printf(
 					"Battery Time Left: %d:%s\n",
 					int32(bat_time_left/60/60),
