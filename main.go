@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -20,7 +22,16 @@ var (
 )
 
 func main() {
+	logDir := filepath.Join(os.Getenv("HOME"), ".local", "state", "GoHWMon.log")
+	logFile, err := os.OpenFile(logDir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.SetOutput(logFile)
+	defer logFile.Close()
+	log.Println("Starting the application.")
 	if err := ui.Init(); err != nil {
+		log.Println("Error while initializing the UI.", err)
 	}
 	defer ui.Close()
 	rate := 0.5
@@ -33,12 +44,14 @@ func main() {
 	for {
 		select {
 		case <-sigTerm:
+			log.Println("Closing via SIGTERM.")
 			return
 		case <-updateInt:
 			go update(interval)
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
+				log.Println("Closing the application.")
 				return
 			}
 		}
@@ -48,11 +61,11 @@ func main() {
 func update(updateInterval time.Duration) {
 	memory, err := mem.VirtualMemory()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	cpuPcnt, err := psCpu.Percent(updateInterval, true)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	fmt.Print("\033[H\033[2J")
 	fmt.Println("Memory:")
@@ -74,24 +87,24 @@ func update(updateInterval time.Duration) {
 
 	cycle_count, err := os.ReadFile("/sys/class/power_supply/BAT0/cycle_count")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	fmt.Printf("Battery Cycle Count: %s", string(cycle_count))
 
 	charging, err := os.ReadFile("/sys/class/power_supply/BAT0/status")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	energy_now, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_now")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	energy_now1 := string(energy_now)
 	energy_now1 = energy_now1[:len(energy_now1)-2]
 	energy, err := strconv.Atoi(string(energy_now1))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	capacity, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_full")
@@ -99,17 +112,17 @@ func update(updateInterval time.Duration) {
 	capacity1 = capacity1[:len(capacity1)-2]
 	capacity2, err := strconv.Atoi(string(capacity1))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	energy_full, err := os.ReadFile("/sys/class/power_supply/BAT0/energy_full_design")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	energy_full1 := string(energy_full)
 	energy_full1 = energy_full1[:len(energy_full1)-2]
 	max_energy, err := strconv.Atoi(energy_full1)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	fmt.Printf("Battery Level: %.2f%%\n", float64(energy)/float64(capacity2)*100)
@@ -117,13 +130,13 @@ func update(updateInterval time.Duration) {
 	if string(charging) != "Not charging\n" {
 		power_now, err := os.ReadFile("/sys/class/power_supply/BAT0/power_now")
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 		power_now1 := string(power_now)
 		power_now1 = power_now1[:len(power_now1)-2]
 		power, err := strconv.Atoi(string(power_now1))
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 		if string(charging) == "Charging\n" {
 			minutesLeft := int32((float64(max_energy)-float64(energy))/float64(power)*60) % 60
