@@ -16,6 +16,7 @@ import (
 var (
 	BYTES_IN_GB = 1024 * 1024 * 1024
 	grid        = ui.NewGrid()
+	stats       Stats
 )
 
 func main() {
@@ -25,19 +26,25 @@ func main() {
 	uiView := NewView()
 	uiView.SetLayout()
 	uiView.Render()
-	rate := 0.5
+	statsChan := make(chan Stats)
+	rate := 1
 	interval := time.Second * time.Duration(1/rate)
 	updateInt := time.NewTicker(interval).C
 	sigTerm := make(chan os.Signal, 2)
 	signal.Notify(sigTerm, os.Interrupt, syscall.SIGTERM)
-	update(interval)
+	// update(interval)
+	stats = UpdateStatsCharts(UpdateCPU(interval), UpdateMem())
+	uiView.UpdateStats(stats)
 	uiEvents := ui.PollEvents()
 	for {
 		select {
 		case <-sigTerm:
 			return
 		case <-updateInt:
-			go update(interval)
+			// go update(interval)
+		case newStats := <-statsChan:
+			currentStats := newStats
+			uiView.UpdateStats(currentStats)
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
@@ -45,6 +52,38 @@ func main() {
 			}
 		}
 	}
+}
+
+func UpdateMem() []float64 {
+	memory, err := mem.VirtualMemory()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return []float64{float64(memory.Used), float64(memory.Free)}
+}
+
+func UpdateCPU(updateInterval time.Duration) []float64 {
+	cpuPcnt, err := psCpu.Percent(updateInterval, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return cpuPcnt
+}
+
+func UpdateStatsCharts(
+	cpuStats []float64,
+	memStats []float64,
+) (statMsg Stats) {
+	statMsg.CpuChart = ChartData{}
+	statMsg.MemChart = ChartData{}
+
+	statMsg.CpuChart.DataLabels = make([]string, len(cpuStats))
+	statMsg.CpuChart.Data = cpuStats
+
+	statMsg.MemChart.DataLabels = make([]string, len(memStats))
+	statMsg.MemChart.Data = memStats
+
+	return statMsg
 }
 
 func update(updateInterval time.Duration) {

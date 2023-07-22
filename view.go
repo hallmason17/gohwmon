@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -14,10 +16,42 @@ type view struct {
 	BatteryList *widgets.Paragraph
 }
 
+type ChartData struct {
+	DataLabels []string
+	Data       []float64
+}
+
+type Stats struct {
+	CpuChart ChartData
+	MemChart ChartData
+}
+
 func createBarChart() *widgets.BarChart {
 	chart := widgets.NewBarChart()
 	chart.Border = true
 	return chart
+}
+
+func (cd ChartData) UpdateBarChart(uiChart *widgets.BarChart) {
+	uiChart.Data = cd.Data
+	numBars := len(cd.Data)
+	uiChart.BarColors = make([]ui.Color, numBars)
+	uiChart.LabelStyles = make([]ui.Style, numBars)
+	uiChart.NumStyles = make([]ui.Style, numBars)
+	uiChart.Labels = make([]string, numBars)
+	for i := 0; i < numBars; i++ {
+		uiChart.BarColors[i] = ui.ColorWhite
+		uiChart.LabelStyles[i] = ui.Style{Fg: ui.ColorWhite, Bg: ui.ColorClear}
+		uiChart.NumStyles[i] = ui.Style{Fg: ui.ColorBlack}
+		uiChart.Labels[i] = fmt.Sprintf("%3s", cd.DataLabels[i])
+	}
+}
+
+func (v *view) UpdateStats(charts Stats) {
+	charts.CpuChart.UpdateBarChart(v.CpuChart)
+	charts.MemChart.UpdateBarChart(v.MemChart)
+
+	v.Render()
 }
 
 func (v *view) SetLayout() {
