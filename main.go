@@ -9,7 +9,6 @@ import (
 	"time"
 
 	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 	psCpu "github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 )
@@ -23,6 +22,9 @@ func main() {
 	if err := ui.Init(); err != nil {
 	}
 	defer ui.Close()
+	uiView := NewView()
+	uiView.SetLayout()
+	uiView.Render()
 	rate := 0.5
 	interval := time.Second * time.Duration(1/rate)
 	updateInt := time.NewTicker(interval).C
@@ -168,25 +170,4 @@ func update(updateInterval time.Duration) {
 	} else if string(charging) == "Not charging\n" {
 		fmt.Println("Not Charging")
 	}
-}
-
-func SetupGrid(data []float64) {
-	termWidth, termHeight := ui.TerminalDimensions()
-	grid.SetRect(0, 0, termWidth, termHeight)
-	data1 := widgets.NewSparkline()
-	data1.Data = data
-	data1.LineColor = ui.ColorRed
-	slg := widgets.NewSparklineGroup(data1)
-
-	var cpuRow ui.GridItem
-
-	cpuRow = ui.NewRow(1.0/2,
-		ui.NewCol(1.0/2, slg),
-		ui.NewCol(1.0/2, slg),
-	)
-
-	grid.Set(
-		cpuRow,
-	)
-	ui.Render(grid)
 }
