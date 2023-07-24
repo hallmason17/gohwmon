@@ -27,7 +27,7 @@ func main() {
 	uiView.SetLayout()
 	uiView.Render()
 	statsChan := make(chan Stats)
-	rate := 1
+	rate := 0.5
 	interval := time.Second * time.Duration(1/rate)
 	updateInt := time.NewTicker(interval).C
 	sigTerm := make(chan os.Signal, 2)
@@ -41,6 +41,7 @@ func main() {
 		case <-sigTerm:
 			return
 		case <-updateInt:
+			uiView.UpdateStats(UpdateStatsCharts(UpdateCPU(interval), UpdateMem()))
 			// go update(interval)
 		case newStats := <-statsChan:
 			currentStats := newStats
@@ -82,6 +83,10 @@ func UpdateStatsCharts(
 
 	statMsg.MemChart.DataLabels = make([]string, len(memStats))
 	statMsg.MemChart.Data = memStats
+
+	for i := 0; i < len(cpuStats); i++ {
+		statMsg.CpuChart.DataLabels[i] = "C" + fmt.Sprint(i)
+	}
 
 	return statMsg
 }

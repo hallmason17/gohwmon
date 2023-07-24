@@ -29,6 +29,9 @@ type Stats struct {
 func createBarChart() *widgets.BarChart {
 	chart := widgets.NewBarChart()
 	chart.Border = true
+	chart.NumFormatter = func(f float64) string {
+		return fmt.Sprintf("%02.0f", f)
+	}
 	return chart
 }
 
