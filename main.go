@@ -34,14 +34,14 @@ func main() {
 	signal.Notify(sigTerm, os.Interrupt, syscall.SIGTERM)
 	// update(interval)
 	stats = UpdateStatsCharts(UpdateCPU(interval), UpdateMem())
-	uiView.UpdateStats(stats)
+	go uiView.UpdateStats(stats)
 	uiEvents := ui.PollEvents()
 	for {
 		select {
 		case <-sigTerm:
 			return
 		case <-updateInt:
-			uiView.UpdateStats(UpdateStatsCharts(UpdateCPU(interval), UpdateMem()))
+			go uiView.UpdateStats(UpdateStatsCharts(UpdateCPU(interval), UpdateMem()))
 			// go update(interval)
 		case newStats := <-statsChan:
 			currentStats := newStats
